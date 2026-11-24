@@ -1,31 +1,31 @@
-# בית בדק — מערכת בקרת הצעות לדירות
+# Bayit Bodek — Apartment Proposal Review
 
-אפליקציית React + TypeScript סטטית בעברית, שמנתחת הצעת מתווך מול בקשת לקוח ומאגר JSON לקריאה בלבד.
+A static Hebrew-language React and TypeScript app that analyzes a broker's apartment proposal against a client's requirements and a read-only JSON database.
 
-## הפעלה
+## Getting started
 
 ```bash
 npm install
 npm run dev
 ```
 
-בדיקות ובנייה:
+Run tests and build the app:
 
 ```bash
 npm test
 npm run build
 ```
 
-## לפני שימוש עסקי
+## Before business use
 
-- `src/data/properties.json` מכיל חמש רשומות הדגמה סינתטיות עם מזהי `DEMO-*`. אין להשתמש בהן להחלטות אמיתיות. יש להחליפן רק בנתונים שאושרו.
-- המפתח מוזן על ידי המשתמש, מוחזק בזיכרון העמוד בלבד, ונשלח ישירות ל־OpenAI. המשתמש והדפדפן יכולים לגשת אליו. אין להשתמש במפתח משותף שאמור להיות סודי.
-- טקסטי ההצעה ובקשת הלקוח נשלחים גם הם ישירות ל־OpenAI. יש לקבל אישור מדיניות מתאים לפני הזנת מידע אמיתי.
-- המודל מוגדר כרגע ל־`gpt-4o-mini` ב־`src/services/analysisPipeline.ts`. יש לאשר זמינות והרשאות API/CORS בחשבון לפני פריסה.
-- דרישת `must` חסרה או שאינה מתקיימת מוגדרת כאן כ־`לא לאשר`, לפי כללי האפיון. ניתן לשנות זאת רק לאחר הכרעה עסקית.
-- ה־LLM מחלץ ומנסח בלבד. סטטוסי ההשוואה וכללי בדיקת ההמלצה נקבעים בקוד.
-- אין אחסון ב־localStorage, sessionStorage או בעוגיות. רענון הדף מנקה קלט, מפתח ודוח.
+- `src/data/properties.json` contains five synthetic demo records with `DEMO-*` IDs. Do not use them for real decisions. Replace them only with approved data.
+- The user enters the API key. It is held only in page memory and sent directly to OpenAI. The user and browser can access it. Do not use a shared key that must remain secret.
+- Proposal and client-requirement text is also sent directly to OpenAI. Confirm that the applicable policies allow this before entering real information.
+- The model is currently set to `gpt-4o-mini` in `src/services/analysisPipeline.ts`. Confirm model availability and API/CORS permissions for your account before deployment.
+- Under the current specification, a missing or unmet `must` requirement means “Do not approve.” Change this only after a business decision.
+- The LLM only extracts and summarizes information. The code determines comparison statuses and recommendation-check rules.
+- The app does not use `localStorage`, `sessionStorage`, or cookies. Refreshing the page clears the input, API key, and report.
 
-## פריסה
+## Deployment
 
-האתר נבנה לקבצים סטטיים באמצעות `npm run build`. יש לארח אותו ב־HTTPS. אין להגדיר API key במשתני build.
+The app builds to static files with `npm run build`. Host it over HTTPS. Do not set an API key in build-time environment variables.
