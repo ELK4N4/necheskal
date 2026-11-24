@@ -8,6 +8,7 @@ export const ProposalFieldSchema = z.object({
 }).strict();
 
 export const UnverifiedProposalClaimSchema = z.object({
+  field: z.string().trim().min(1).nullable().optional(),
   claim: z.string().trim().min(1),
   quote: z.string().trim().min(1),
 }).strict();

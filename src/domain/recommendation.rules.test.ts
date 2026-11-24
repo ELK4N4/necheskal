@@ -17,10 +17,21 @@ describe("recommendation decision rules", () => {
     expect(deriveRecommendationLabel(facts)).toBe("לא לאשר");
   });
 
-  it("allows clarification for a database mismatch when the broker explains that field's discrepancy", () => {
+  it("requires clarification for any missing proposal field", () => {
+    const facts: RecommendationFacts = {
+      databaseComparisons: [{ field: "availableFrom", status: "missing", proposalValue: null, databaseValue: "2027-01-15" }],
+      requirementComparisons: [],
+      unparsedRequests: [],
+    };
+
+    expect(allowedRecommendationLabels(facts)).toEqual(new Set(["נדרש בירור"]));
+    expect(deriveRecommendationLabel(facts)).toBe("נדרש בירור");
+  });
+
+  it("requires clarification when the broker explains a database mismatch on the same field", () => {
     const facts: RecommendationFacts = {
       databaseComparisons: [{ field: "city", status: "mismatch", proposalValue: "רמת גן", databaseValue: "ירושלים" }],
-      requirementComparisons: [{ field: "city", status: "mismatch", importance: "preference", brokerExplanation: "המתווך מסביר שהדירה סמוכה לירושלים" }],
+      requirementComparisons: [{ field: "city", status: "mismatch", importance: "must", brokerExplanation: "המתווך מסביר שהדירה סמוכה לירושלים" }],
       unparsedRequests: [],
     };
 
@@ -60,26 +71,26 @@ describe("recommendation decision rules", () => {
     expect(deriveRecommendationLabel(facts)).toBe("לא לאשר");
   });
 
-  it("allows clarification when an unverified broker claim explains the mismatched field", () => {
+  it("requires clarification when a broker claim is explicitly linked to the mismatched field", () => {
     const facts: RecommendationFacts = {
       databaseComparisons: [{ field: "city", status: "mismatch", proposalValue: "רמת גן", databaseValue: "ירושלים" }],
       requirementComparisons: [],
       unparsedRequests: [],
-      unverifiedClaims: [{ claim: "הדירה ברמת גן, סמוך לירושלים" }],
+      unverifiedClaims: [{ field: "city", claim: "הדירה ברמת גן, סמוך לירושלים" }],
     };
 
     expect(deriveRecommendationLabel(facts)).toBe("נדרש בירור");
   });
 
-  it("allows clarification for a city preference explained as being near the requested city", () => {
+  it("does not use unrelated unverified claims as explanations for a mismatch", () => {
     const facts: RecommendationFacts = {
       databaseComparisons: [{ field: "city", status: "mismatch", proposalValue: "רמת גן", databaseValue: "פתח תקווה" }],
       requirementComparisons: [{ field: "city", status: "mismatch", importance: "preference" }],
       unparsedRequests: [],
-      unverifiedClaims: [{ claim: "זה על גבול פתח תקווה. זה קרוב מאוד לאיפה רציתם." }],
+      unverifiedClaims: [{ field: "price", claim: "הדירה קרובה מאוד למקום המבוקש" }],
     };
 
-    expect(deriveRecommendationLabel(facts)).toBe("נדרש בירור");
+    expect(deriveRecommendationLabel(facts)).toBe("לא לאשר");
   });
 
   it("does not allow an explained preference to excuse another unexplained database mismatch", () => {
@@ -92,7 +103,7 @@ describe("recommendation decision rules", () => {
         { field: "city", status: "mismatch", importance: "preference" },
       ],
       unparsedRequests: [],
-      unverifiedClaims: [{ claim: "הדירה ברמת גן, על גבול פתח תקווה, וקרובה מאוד למקום המבוקש" }],
+      unverifiedClaims: [{ field: "city", claim: "הדירה ברמת גן, על גבול פתח תקווה, וקרובה מאוד למקום המבוקש" }],
     };
 
     expect(deriveRecommendationLabel(facts)).toBe("לא לאשר");
@@ -106,6 +117,20 @@ describe("recommendation decision rules", () => {
     };
 
     expect(allowedRecommendationLabels(facts)).toEqual(new Set(["לא לאשר"]));
+    expect(deriveRecommendationLabel(facts)).toBe("לא לאשר");
+  });
+
+  it("requires clarification for a broker-explained mismatch while rejecting a separate unexplained mismatch", () => {
+    const facts: RecommendationFacts = {
+      databaseComparisons: [
+        { field: "city", status: "mismatch", proposalValue: "רמת גן", databaseValue: "פתח תקווה" },
+        { field: "price", status: "mismatch", proposalValue: 2_000_000, databaseValue: 2_500_000 },
+      ],
+      requirementComparisons: [],
+      unparsedRequests: [],
+      unverifiedClaims: [{ field: "city", claim: "הנכס סמוך לפתח תקווה" }],
+    };
+
     expect(deriveRecommendationLabel(facts)).toBe("לא לאשר");
   });
 });

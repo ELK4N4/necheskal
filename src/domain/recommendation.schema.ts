@@ -16,45 +16,21 @@ export type RecommendationFacts = {
   databaseComparisons: Array<{ field: string; status: string; proposalValue?: unknown; databaseValue?: unknown }>;
   requirementComparisons: Array<{ field: string; status: string; importance: string; brokerExplanation?: string }>;
   unparsedRequests: Array<unknown>;
-  unverifiedClaims?: Array<{ claim?: string; quote?: string }>;
+  unverifiedClaims?: Array<{ field?: string | null; claim?: string; quote?: string }>;
 };
 
 export function allowedRecommendationLabels(facts: RecommendationFacts): Set<Recommendation["label"]> {
-  const hasUnknown = facts.requirementComparisons.some((item) => item.status === "unknown");
-  const hasNonPreferenceDatabaseMismatch = facts.databaseComparisons.some(
-    (item) => item.status === "mismatch"
-      && !hasBrokerExplanationForField(facts, item.field),
-  );
-  const hasUnexplainedMustMismatch = facts.requirementComparisons.some(
-    (item) => item.status === "mismatch"
-      && item.importance === "must"
-      && !item.brokerExplanation?.trim()
-      && !hasBrokerExplanationForField(facts, item.field),
-  );
-  const hasPreferenceMismatch = facts.requirementComparisons.some(
-    (item) => item.status === "mismatch" && item.importance === "preference",
-  );
-  const hasOpenMust = facts.requirementComparisons.some((item) =>
-    item.importance === "must" && item.status === "missing");
-  const hasUnparsed = facts.unparsedRequests.length > 0;
-  const hasUnverifiedClaims = (facts.unverifiedClaims?.length ?? 0) > 0;
-  if (hasNonPreferenceDatabaseMismatch || hasUnexplainedMustMismatch) {
-    return new Set(["לא לאשר"]);
-  }
-  if (hasPreferenceMismatch) return new Set(["נדרש בירור"]);
-  if (hasUnknown || hasOpenMust || hasUnparsed || hasUnverifiedClaims) return new Set(["נדרש בירור"]);
-  return new Set(["מוכן לאישור"]);
+  return new Set([deriveRecommendationLabel(facts)]);
 }
 
 export function deriveRecommendationLabel(facts: RecommendationFacts): Recommendation["label"] {
+  const hasUnexplainedDatabaseMismatch = facts.databaseComparisons.some(
+    (item) => item.status === "mismatch" && !hasBrokerExplanationForField(facts, item.field),
+  );
   const hasUnexplainedMustMismatch = facts.requirementComparisons.some(
     (item) => item.status === "mismatch"
       && item.importance === "must"
       && !item.brokerExplanation?.trim()
-      && !hasBrokerExplanationForField(facts, item.field),
-  );
-  const hasNonPreferenceDatabaseMismatch = facts.databaseComparisons.some(
-    (item) => item.status === "mismatch"
       && !hasBrokerExplanationForField(facts, item.field),
   );
   const hasUnexplainedPreferenceMismatch = facts.requirementComparisons.some(
@@ -63,20 +39,20 @@ export function deriveRecommendationLabel(facts: RecommendationFacts): Recommend
       && !item.brokerExplanation?.trim()
       && !hasBrokerExplanationForField(facts, item.field),
   );
-  if (hasNonPreferenceDatabaseMismatch || hasUnexplainedMustMismatch || hasUnexplainedPreferenceMismatch) {
+  if (hasUnexplainedDatabaseMismatch || hasUnexplainedMustMismatch || hasUnexplainedPreferenceMismatch) {
     return "לא לאשר";
   }
 
-  if (
-    facts.requirementComparisons.some((item) =>
+  const hasOpenIssue = facts.databaseComparisons.some((item) => item.status === "missing")
+    || facts.requirementComparisons.some((item) =>
       item.status === "unknown"
+      || (item.importance === "must" && item.status === "mismatch" && Boolean(item.brokerExplanation?.trim()))
       || (item.importance === "must" && item.status === "missing")
-      || (item.importance === "must" && item.status === "mismatch" && Boolean(item.brokerExplanation))
       || (item.importance === "preference" && (item.status === "missing" || item.status === "mismatch")),
     )
     || facts.unparsedRequests.length > 0
-    || (facts.unverifiedClaims?.length ?? 0) > 0
-  ) {
+    || (facts.unverifiedClaims?.length ?? 0) > 0;
+  if (hasOpenIssue) {
     return "נדרש בירור";
   }
 
@@ -87,27 +63,8 @@ function hasBrokerExplanationForField(facts: RecommendationFacts, field: string)
   const requirementExplanation = facts.requirementComparisons.some(
     (item) => item.field === field && Boolean(item.brokerExplanation?.trim()),
   );
-  const brokerClaim = facts.unverifiedClaims?.some((claim) => {
-    const text = `${claim.claim ?? ""} ${claim.quote ?? ""}`;
-    return text.trim().length > 0 && claimRefersToField(text, field);
-  }) ?? false;
+  const brokerClaim = facts.unverifiedClaims?.some((claim) => claim.field === field) ?? false;
   return requirementExplanation || brokerClaim;
-}
-
-function claimRefersToField(text: string, field: string): boolean {
-  const patterns: Record<string, RegExp> = {
-    city: /עיר|מיקום|סמוך|קרוב|שכונה|אזור/,
-    price: /מחיר|תקציב|עלות|יקר|זול|₪|ש״ח/,
-    rooms: /חדרים|חדר/,
-    areaSqm: /שטח|מ״ר|מר/,
-    floor: /קומה/,
-    elevator: /מעלית/,
-    parking: /חניה|חנייה|חניון/,
-    safeRoom: /ממ״ד|מרחב מוגן/,
-    accessibility: /נגיש|נגישות/,
-    availableFrom: /זמינות|פינוי|כניסה|מסירה|תאריך|פנויה|פנוי/,
-  };
-  return patterns[field]?.test(text) ?? false;
 }
 
 export function validateRecommendationAgainstFacts(
@@ -138,6 +95,9 @@ export function getRecommendationValidationDetails(
   const unknowns = facts.requirementComparisons
     .filter((item) => item.status === "unknown")
     .map((item) => item.field);
+  const missingProposalFields = facts.databaseComparisons
+    .filter((item) => item.status === "missing")
+    .map((item) => item.field);
 
   const fieldList = (fields: string[]) => [...new Set(fields)].join(", ");
   if (databaseMismatches.length) reasons.push(`סתירה במאגר בשדות: ${fieldList(databaseMismatches)}`);
@@ -145,6 +105,7 @@ export function getRecommendationValidationDetails(
   else if (openMust.length) reasons.push(`דרישות חובה פתוחות: ${fieldList(openMust)}`);
   if (explainedMustMismatches.length) reasons.push(`דרישות חובה עם הסבר מתווך לבדיקה: ${fieldList(explainedMustMismatches)}`);
   if (unknowns.length) reasons.push(`נתונים לא מאומתים בשדות: ${fieldList(unknowns)}`);
+  if (missingProposalFields.length) reasons.push(`פרטי הצעה חסרים בשדות: ${fieldList(missingProposalFields)}`);
   if (facts.unparsedRequests.length) reasons.push(`${facts.unparsedRequests.length} בקשות לא פוענחו`);
   if (facts.unverifiedClaims?.length) reasons.push(`${facts.unverifiedClaims.length} טענות מתווך לא אומתו מול המאגר`);
 
@@ -153,4 +114,28 @@ export function getRecommendationValidationDetails(
     `תוויות מותרות: ${allowed.map((label) => `"${label}"`).join(", ")}`,
     `הסיבה לכלל ההכרעה: ${reasons.length ? reasons.join("; ") : "לא זוהו פערים המחייבים שינוי תווית"}`,
   ].join(". ");
+}
+
+export function createRecommendationSummary(
+  label: Recommendation["label"],
+  facts: RecommendationFacts,
+): string {
+  const missingFields = facts.databaseComparisons
+    .filter((item) => item.status === "missing")
+    .map((item) => item.field);
+  const mismatchedFields = facts.databaseComparisons
+    .filter((item) => item.status === "mismatch")
+    .map((item) => item.field);
+  const openRequirementFields = facts.requirementComparisons
+    .filter((item) => item.status === "unknown" || item.status === "missing" || item.status === "mismatch")
+    .map((item) => item.field);
+
+  if (label === "מוכן לאישור") return "ההצעה תואמת לנתוני המאגר ולדרישות הלקוח.";
+  if (label === "לא לאשר") return "נמצאה סתירה שאינה מוסברת בין ההצעה לנתוני המאגר או לדרישת חובה.";
+
+  const fields = [...new Set([...missingFields, ...mismatchedFields, ...openRequirementFields])];
+  if (fields.length) return `נדרש בירור בפרטים הבאים: ${fields.join(", ")}.`;
+  if (facts.unverifiedClaims?.length) return "נדרש בירור של טענות המתווך שלא ניתן לאמת מול המאגר.";
+  if (facts.unparsedRequests.length) return "נדרש בירור של בקשות הלקוח שלא ניתן לבדוק מול המאגר.";
+  return "נדרש בירור של פרטים חסרים או לא מאומתים לפני קבלת החלטה.";
 }

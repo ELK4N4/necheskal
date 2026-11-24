@@ -13,11 +13,12 @@ import type { RequirementComparison } from "../domain/evaluateProposalAgainstReq
 import type { DatabaseComparison } from "../domain/compareProposalToDatabase";
 import {
   RecommendationSchema,
+  createRecommendationSummary,
   deriveRecommendationLabel,
   type ValidatedRecommendation,
 } from "../domain/recommendation.schema";
 import { screenProposal } from "../domain/screenProposal";
-import { requestStructured, type StructuredOpenAIClient } from "./openaiClient";
+import { requestStructured, type StructuredGeminiClient } from "./geminiClient";
 
 export type AnalysisStage = "screening" | "extraction" | "lookup" | "comparison" | "recommendation";
 export type AnalysisReport = {
@@ -30,10 +31,9 @@ export type AnalysisReport = {
   recommendation: ValidatedRecommendation;
 };
 
-const MODEL = "gpt-4o";
-
 export async function runAnalysis(
-  client: StructuredOpenAIClient,
+  client: StructuredGeminiClient,
+  model: string,
   properties: Property[],
   clientRequest: string,
   proposalText: string,
@@ -49,10 +49,10 @@ export async function runAnalysis(
 
   onStage("extraction");
   const proposal = await requestStructured(
-    client, MODEL,
+    client, model,
     `נתח הצעת נדל״ן אחת בלבד והחזר JSON. צטט מילה במילה מתוך הטקסט. החזר propertyId, ציטוט מזהה, fields עבור שדות המאגר שנאמרו במפורש בלבד: propertyId, city, price, rooms, areaSqm, floor, elevator, parking, safeRoom, accessibility, availableFrom. בשדות מספריים price, rooms, areaSqm ו-floor, החזר value כמספר JSON בלבד ללא יחידות, מפרידי אלפים, מטבע או טקסט; לדוגמה, עבור "96 מ״ר" החזר value: 96, ועבור "3.5 חדרים" החזר value: 3.5. עבור availableFrom, חלץ תאריך מפורש גם כשהיום, החודש או השנה כתובים במילים. המר את התאריך ל-ISO מסוג YYYY-MM-DD, תוך התחשבות בהטיות ובצורות כתיב מקובלות של שמות חודשים בעברית. השאר quote כציטוט מדויק ורציף מההצעה. אל תחזיר null רק משום שחלקי התאריך כתובים במילים; החזר null וציטוט ריק רק אם התאריך חסר או עמום ואין דרך חד-משמעית לנרמל אותו. בשדות בוליאניים החזר true או false רק כאשר הטקסט קובע זאת במפורש, אחרת null וציטוט ריק. אל תמציא או תסיק נתונים.
 
-  בנוסף, חלץ כל טענה מפורשת של המתווך שאי אפשר לאמת מול שדות המאגר, וכן כל הסבר או הצדקה לפער מול בקשת הלקוח, ב-unverifiedClaims. החזר לכל פריט claim ו-quote בלבד, בלי שדות נוספים. quote חייב להיות ציטוט מדויק. אל תמציא או תסיק עובדות. אם אין טענות או הסברים, החזר מערך ריק. החזר את כל המפתחות, כולל unverifiedClaims.`,
+  בנוסף, חלץ כל טענה מפורשת של המתווך שאי אפשר לאמת מול שדות המאגר, וכן כל הסבר או הצדקה לפער מול בקשת הלקוח, ב-unverifiedClaims. לכל פריט החזר claim, quote ו-field: שם שדה קנוני אחד מתוך רשימת השדות אם הטענה מסבירה פער מסוים; אם אין קשר ברור לשדה מסוים, החזר field:null. אל תסיק קשר ממילים כלליות בלבד. quote חייב להיות ציטוט מדויק. אל תמציא או תסיק עובדות. אם אין טענות או הסברים, החזר מערך ריק. החזר את כל המפתחות, כולל unverifiedClaims.`,
     proposalText, ProposalExtractionResponseSchema, "proposal_extraction",
   );
   const normalizedProposal = normalizeProposalExtraction(proposal);
@@ -60,7 +60,7 @@ export async function runAnalysis(
   normalizedProposal.propertyIdQuote = screen.propertyIdQuote;
 
   const requirements = await requestStructured(
-    client, MODEL,
+    client, model,
     `חלץ את כל דרישות הלקוח שאפשר לבדוק. השתמש בשמות השדות הקנוניים הבאים בלבד: ${REQUIREMENT_FIELD_GUIDANCE}. למחיר או לתקציב השתמש תמיד ב-price; למספר חדרים השתמש ב-rooms. למועד שבו אפשר להיכנס לנכס, מועד כניסה, כניסה לדירה, פינוי, מסירה או זמינות הנכס השתמש תמיד בשדה availableFrom. אלה ניסוחים שונים לאותה דרישה של מועד זמינות הנכס. אל תסווג אותם כבקשה שאין עליה מידע במאגר אם ניתן לחלץ מהם תאריך. ברירת המחדל היא must. השתמש ב-preference רק כשהלקוח אמר במפורש שזו העדפה. ציטוט evidenceQuote חייב להיות מדויק ורציף. אל תמציא דרישות.
 
 אם בקשת הלקוח מתייחסת לפרט שלא מופיע בשדות המאגר, הוסף אותה ל-unparsedRequests עם ציטוט מדויק והסבר בעברית פשוטה. הסבר שהמידע אינו מופיע במאגר ולכן אי אפשר לבדוק את הבקשה, וציין מה צריך לברר. אל תשתמש במונחים טכניים כמו "שדות קנוניים" בהסבר שמוצג למנהל. אל תנחש פרטים שאינם מופיעים בבקשה. החזר אובייקט JSON עם requirements (מערך) ו-unparsedRequests (מערך), גם אם הם ריקים.`,
@@ -74,22 +74,32 @@ export async function runAnalysis(
 
   onStage("recommendation");
   const modelRecommendation = await requestStructured(
-    client, MODEL,
+    client, model,
       `נסח את כל הטקסטים בעברית בלבד, כולל summary, strengths[].text, strengths[].evidence, weaknesses[].text ו-weaknesses[].evidence. שמור ציטוטי ראיות מדויקים כפי שהופיעו במקור. כל פריט ב-unverifiedClaims הוא טענה או הסבר מפורש של המתווך, ויש להשתמש בציטוט המקורי כראיה.
 נסח המלצה פנימית מתוך הממצאים בלבד, בלי להוסיף עובדות או להעריך אם טענת מתווך נכונה או משכנעת.
 בחר תווית אחת מתוך "לא לאשר", "מוכן לאישור", "נדרש בירור". אם יש לפחות פריט אחד ב-unverifiedClaims, ברירת המחדל היא "נדרש בירור". אין לכתוב "לא לאשר" רק מפני שהפער משמעותי בעיניך. בחר "לא לאשר" רק אם יש דרישת חובה שלא מתקיימת או סתירה אחרת לנתוני המאגר, שאינה תלויה בטענת המתווך ואינה נפתרת על ידה. טענת מתווך לא מאומתת אינה מוכיחה שהנתון שגוי, אך מחייבת בירור. "מוכן לאישור" מותר רק כשאין פערים, טענות לא מאומתות או שאלות פתוחות. בסיכום, ציין בקצרה את הפער ואת טענת המתווך שיש לבדוק, בלי להכריע אם היא נכונה.
 החזר JSON בלבד ובדיוק לפי הסכמה. השדה summary הוא משפט חובה שאורכו לפחות תו אחד ומסביר את התווית. strengths ו-weaknesses יהיו מערכים של {text, evidence}. החזר את כל השדות גם כשאין פריטים, עם מערכים ריקים.`,
-     JSON.stringify({ proposalText, databaseComparisons, requirementComparisons, unparsedRequests: validatedRequirements.unparsedRequests, unverifiedClaims: proposal.unverifiedClaims }),
+      JSON.stringify({
+        proposalText,
+        databaseComparisons,
+        requirementComparisons,
+        unparsedRequests: validatedRequirements.unparsedRequests,
+        unverifiedClaims: proposal.unverifiedClaims,
+      }),
      RecommendationSchema, "recommendation",
    );
+  const recommendationFacts = {
+    databaseComparisons,
+    requirementComparisons,
+    unparsedRequests: validatedRequirements.unparsedRequests,
+    unverifiedClaims: proposal.unverifiedClaims,
+  };
+  const label = deriveRecommendationLabel(recommendationFacts);
+  const deterministicSummary = createRecommendationSummary(label, recommendationFacts);
   const recommendation = {
     ...modelRecommendation,
-    label: deriveRecommendationLabel({
-      databaseComparisons,
-      requirementComparisons,
-      unparsedRequests: validatedRequirements.unparsedRequests,
-      unverifiedClaims: proposal.unverifiedClaims,
-    }),
+    label,
+    summary: label === "מוכן לאישור" || label === "לא לאשר" ? deterministicSummary : modelRecommendation.summary,
   };
 
   return {

@@ -133,11 +133,11 @@ describe("proposal schemas", () => {
     });
 
     expect(parsed.unverifiedClaims).toEqual([
-      { claim: "הבניין נבנה בשנת 2019 על ידי אשטרום", quote: "הבניין נבנה בשנת 2019 על ידי אשטרום." },
+      { field: undefined, claim: "הבניין נבנה בשנת 2019 על ידי אשטרום", quote: "הבניין נבנה בשנת 2019 על ידי אשטרום." },
     ]);
   });
 
-  it("does not allow the model to add an unsupported field to an unverified claim", () => {
+  it("preserves an explicit canonical field link on an unverified claim", () => {
     const parsed = normalizeProposalExtraction({
       proposalCount: 1,
       readable: true,
@@ -145,11 +145,13 @@ describe("proposal schemas", () => {
       propertyIdQuote: "DEMO-002",
       fields: [],
       unverifiedClaims: [{
+        field: "price",
         claim: "הנכס סמוך לפתח תקווה ולכן המחיר נמוך",
         quote: "זה על גבול פתח תקווה ובגלל זה המחיר נמוך",
       }],
     });
 
+    expect(parsed.unverifiedClaims[0]?.field).toBe("price");
     expect(parsed.unverifiedClaims[0]?.claim).toContain("המחיר נמוך");
   });
 });

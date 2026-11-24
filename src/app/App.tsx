@@ -3,12 +3,13 @@ import propertiesJson from "../data/properties.json";
 import { PropertyListSchema, type Property, FIELD_LABELS } from "../domain/property.schema";
 import type { AnalysisReport, AnalysisStage } from "../services/analysisPipeline";
 import { runAnalysis } from "../services/analysisPipeline";
-import { createOpenAIClient, getUserFacingApiError } from "../services/openaiClient";
+import { createGeminiClient, getUserFacingApiError } from "../services/geminiClient";
 import type { DatabaseComparison } from "../domain/compareProposalToDatabase";
 import type { RequirementComparison } from "../domain/evaluateProposalAgainstRequirements";
 
 const parsedProperties = PropertyListSchema.safeParse(propertiesJson);
 const propertyData: Property[] = parsedProperties.success ? parsedProperties.data : [];
+const GEMINI_MODEL = "gemini-3.8-flash";
 
 type Page = "review" | "catalog";
 const stages: Array<{ id: AnalysisStage; label: string }> = [
@@ -63,7 +64,7 @@ function App() {
     setError("");
     setStage("screening");
     try {
-      const result = await runAnalysis(createOpenAIClient(apiKey.trim()), propertyData, clientRequest.trim(), proposalText.trim(), setStage);
+      const result = await runAnalysis(createGeminiClient(apiKey.trim()), GEMINI_MODEL, propertyData, clientRequest.trim(), proposalText.trim(), setStage);
       setReport(result);
       setReportInput({ clientRequest: clientRequest.trim(), proposalText: proposalText.trim() });
     } catch (cause) {
@@ -176,9 +177,11 @@ function ReviewPage(props: {
           </div>
           <form onSubmit={(event) => { event.preventDefault(); props.onRun(); }}>
             <div className="field-group api-field">
-              <label htmlFor="api-key"><span>מפתח OpenAI API</span><span className="field-tag">SESSION ONLY</span></label>
-              <div className="api-input"><Icon name="key" /><input id="api-key" aria-label="מפתח OpenAI API" type="password" autoComplete="off" spellCheck={false} value={props.apiKey} onChange={(event) => props.setApiKey(event.target.value)} placeholder="sk-••••••••••••••••••••••••••••" /><span className="secure-pill"><Icon name="shield" /> מוצפן בהעברה</span></div>
-              <div className="field-foot"><span>המפתח לא נשמר בשרת או באחסון הדפדפן.</span><span>OpenAI</span></div>
+              <label htmlFor="api-key"><span>Google Gemini API</span><span className="field-tag">SESSION ONLY</span></label>
+              <div className="api-input">
+                <input id="api-key" aria-label="מפתח Google Gemini API" type="password" autoComplete="off" spellCheck={false} value={props.apiKey} onChange={(event) => props.setApiKey(event.target.value)} placeholder="מפתח Gemini API" />
+              </div>
+              <div className="field-foot"><span>המפתח לא נשמר בשרת או באחסון הדפדפן.</span><span>Gemini 3.8 Flash</span></div>
             </div>
             {props.error && <div className="alert alert-danger form-error"><Icon name="alert" /><span>{props.error}</span></div>}
             <div className="form-actions">

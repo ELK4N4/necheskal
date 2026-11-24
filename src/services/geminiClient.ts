@@ -1,15 +1,15 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 
-export type StructuredOpenAIClient = ReturnType<typeof createOpenAIClient>;
+export type StructuredGeminiClient = ReturnType<typeof createGeminiClient>;
 
-export function createOpenAIClient(apiKey: string, fetchImpl?: typeof fetch) {
-  return createOpenAI({ apiKey, fetch: fetchImpl });
+export function createGeminiClient(apiKey: string, fetchImpl?: typeof fetch) {
+  return createGoogleGenerativeAI({ apiKey, fetch: fetchImpl });
 }
 
 export async function requestStructured<T extends z.ZodType>(
-  client: StructuredOpenAIClient,
+  client: StructuredGeminiClient,
   model: string,
   system: string,
   user: string,
@@ -20,7 +20,7 @@ export async function requestStructured<T extends z.ZodType>(
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const result = await generateText({
-        model: client(model),
+         model: client(model),
         system,
         prompt: user,
         maxRetries: 2,
@@ -93,8 +93,8 @@ export function getUserFacingApiError(error: unknown): string {
   if (message.includes("forbidden") || message.includes("403")) {
     return "החשבון אינו מורשה להשתמש במודל או ב־API מהדפדפן.";
   }
-  if (message.includes("fetch failed") || message.includes("network") || message.includes("connection")) {
-    return "החיבור ל־OpenAI נכשל לפני שהתקבלה תשובת HTTP. בדקו חסימת רשת, CORS או הרחבת דפדפן.";
+   if (message.includes("fetch failed") || message.includes("network") || message.includes("connection")) {
+     return "החיבור ל־Google Gemini נכשל לפני שהתקבלה תשובת HTTP. בדקו חסימת רשת, CORS או הרחבת דפדפן.";
   }
   if (rawMessage.toLowerCase().includes("timeout")) {
     return "הבקשה חרגה מזמן ההמתנה. אפשר לנסות שוב.";

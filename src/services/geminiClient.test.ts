@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createOpenAIClient, describeError, getUserFacingApiError, requestStructured } from "./openaiClient";
+import { createGeminiClient, describeError, getUserFacingApiError, requestStructured } from "./geminiClient";
 import { z } from "zod";
 import { ProposalExtractionResponseSchema } from "../domain/proposal.schema";
 import { RequirementsExtractionResponseSchema } from "../domain/requirement.schema";
 import { RecommendationSchema } from "../domain/recommendation.schema";
 
-describe("OpenAI error messages", () => {
+describe("Gemini error messages", () => {
   it("reports network errors as connectivity problems", () => {
     const error = new Error("fetch failed");
     expect(getUserFacingApiError(error)).toContain("החיבור");
@@ -29,34 +29,13 @@ describe("OpenAI error messages", () => {
   });
 
   it("preserves local Zod validation issues for an API response", async () => {
-    const client = createOpenAIClient("test", async () => new Response(JSON.stringify({
-      id: "resp_test",
-      object: "response",
-      created_at: 0,
-      status: "completed",
-      model: "gpt-4o-mini",
-      output: [{
-        type: "message",
-        id: "msg_test",
-        status: "completed",
-        role: "assistant",
-        content: [{ type: "output_text", text: JSON.stringify({ count: "not a number" }), annotations: [] }],
-      }],
-      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
-      error: null,
-      incomplete_details: null,
-      instructions: null,
-      metadata: {},
-      parallel_tool_calls: true,
-      temperature: 1,
-      top_p: 1,
-      tools: [],
-      tool_choice: "auto",
-      truncation: "disabled",
+    const client = createGeminiClient("test", async () => new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ count: "not a number" }) }] }, finishReason: "STOP" }],
+      usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
     }), { status: 200, headers: { "content-type": "application/json" } }));
     const schema = z.object({ count: z.number() });
 
-    await expect(requestStructured(client, "gpt-4o-mini", "system", "user", schema, "test"))
+    await expect(requestStructured(client, "gemini-3.8-flash", "system", "user", schema, "test"))
       .rejects.toMatchObject({
         cause: {
           cause: {
@@ -68,71 +47,29 @@ describe("OpenAI error messages", () => {
 
   it("retries once when the model output fails schema validation", async () => {
     let calls = 0;
-    const client = createOpenAIClient("test", async () => {
+    const client = createGeminiClient("test", async () => {
       calls += 1;
       const count = calls === 1 ? "not a number" : 3;
       return new Response(JSON.stringify({
-        id: `resp_test_${calls}`,
-        object: "response",
-        created_at: 0,
-        status: "completed",
-        model: "gpt-4o-mini",
-        output: [{
-          type: "message",
-          id: `msg_test_${calls}`,
-          status: "completed",
-          role: "assistant",
-          content: [{ type: "output_text", text: JSON.stringify({ count }), annotations: [] }],
-        }],
-        usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
-        error: null,
-        incomplete_details: null,
-        instructions: null,
-        metadata: {},
-        parallel_tool_calls: true,
-        temperature: 1,
-        top_p: 1,
-        tools: [],
-        tool_choice: "auto",
-        truncation: "disabled",
+        candidates: [{ content: { parts: [{ text: JSON.stringify({ count }) }] }, finishReason: "STOP" }],
+        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
       }), { status: 200, headers: { "content-type": "application/json" } });
     });
     const schema = z.object({ count: z.number() });
 
-    await expect(requestStructured(client, "gpt-4o-mini", "system", "user", schema, "test"))
+    await expect(requestStructured(client, "gemini-3.8-flash", "system", "user", schema, "test"))
       .resolves.toEqual({ count: 3 });
     expect(calls).toBe(2);
   });
 
   it("parses strict structured output", async () => {
-    const client = createOpenAIClient("test", async () => new Response(JSON.stringify({
-      id: "resp_test",
-      object: "response",
-      created_at: 0,
-      status: "completed",
-      model: "gpt-4o-mini",
-      output: [{
-        type: "message",
-        id: "msg_test",
-        status: "completed",
-        role: "assistant",
-        content: [{ type: "output_text", text: JSON.stringify({ count: 3 }), annotations: [] }],
-      }],
-      usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
-      error: null,
-      incomplete_details: null,
-      instructions: null,
-      metadata: {},
-      parallel_tool_calls: true,
-      temperature: 1,
-      top_p: 1,
-      tools: [],
-      tool_choice: "auto",
-      truncation: "disabled",
+    const client = createGeminiClient("test", async () => new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ count: 3 }) }] }, finishReason: "STOP" }],
+      usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
     }), { status: 200, headers: { "content-type": "application/json" } }));
     const schema = z.object({ count: z.number() }).strict();
 
-    await expect(requestStructured(client, "gpt-4o-mini", "system", "user", schema, "test"))
+    await expect(requestStructured(client, "gemini-3.8-flash", "system", "user", schema, "test"))
       .resolves.toEqual({ count: 3 });
   });
 
