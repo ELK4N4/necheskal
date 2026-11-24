@@ -24,10 +24,19 @@ export function normalizeRequirementField(field: string): string {
 export function normalizeRequirementsExtraction(
   result: z.infer<typeof RequirementsExtractionResponseSchema>,
 ): z.infer<typeof RequirementsExtractionSchema> {
-  return RequirementsExtractionSchema.parse({
-    ...result,
-    requirements: result.requirements.map((requirement) => normalizeClientRequirement(requirement)),
+  const unparsedRequests = [...result.unparsedRequests];
+  const requirements = result.requirements.flatMap((requirement) => {
+    const normalized = normalizeClientRequirement(requirement);
+    const parsed = ClientRequirementSchema.safeParse(normalized);
+    if (parsed.success) return [parsed.data];
+    unparsedRequests.push({
+      quote: requirement.evidenceQuote,
+      reason: "לא ניתן לפרש את הבקשה באופן חד-משמעי. כדאי לבדוק אותה ידנית.",
+    });
+    return [];
   });
+
+  return RequirementsExtractionSchema.parse({ requirements, unparsedRequests });
 }
 
 function normalizeClientRequirement<T extends { field: string; value: unknown }>(requirement: T): T {

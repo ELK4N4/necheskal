@@ -34,6 +34,41 @@ describe("requirement field normalization", () => {
     expect(result.success).toBe(false);
   });
 
+  it("drops an invalid extracted requirement and preserves it as an unparsed request", () => {
+    const result = normalizeRequirementsExtraction({
+      requirements: [
+        {
+          field: "parking",
+          operator: "gte",
+          value: true,
+          importance: "must",
+          evidenceQuote: "חניה",
+        },
+        {
+          field: "rooms",
+          operator: "gte",
+          value: 4,
+          importance: "must",
+          evidenceQuote: "לפחות 4 חדרים",
+        },
+      ],
+      unparsedRequests: [],
+    });
+
+    expect(result.requirements).toEqual([
+      {
+        field: "rooms",
+        operator: "gte",
+        value: 4,
+        importance: "must",
+        evidenceQuote: "לפחות 4 חדרים",
+      },
+    ]);
+    expect(result.unparsedRequests).toEqual([
+      expect.objectContaining({ quote: "חניה" }),
+    ]);
+  });
+
   it.each([
     ["available_from", "15 בינואר 2027", "2027-01-15"],
   ])("normalizes natural-language values for %s", (field, value, expected) => {
