@@ -105,14 +105,14 @@ function App() {
     <div className="app-shell" dir="rtl">
       <header className="topbar">
         <a className="brand" href="/" onClick={(event) => { event.preventDefault(); navigate("review"); }}>
-          <span className="brand-mark"><Icon name="home" /></span>
+          <span className="brand-mark"><Icon name="building" /></span>
           <span className="brand-copy"><strong>נכסקל</strong><small>בדיקת הצעות נדל״ן</small></span>
         </a>
         <nav className="main-nav" aria-label="ניווט ראשי">
           <button className={page === "review" ? "nav-link active" : "nav-link"} onClick={() => navigate("review")}><Icon name="scan" />בדיקת הצעה</button>
           <button className={page === "catalog" ? "nav-link active" : "nav-link"} onClick={() => navigate("catalog")}><Icon name="building" />מאגר נכסים <span className="nav-count">05</span></button>
         </nav>
-        <div className="header-status"><span className="status-dot" /> סביבת עבודה מאובטחת</div>
+         <div className="header-status"><span className="status-dot" /> סביבת עבודה מאובטחת</div>
       </header>
 
       <main className="main-content">
@@ -149,7 +149,6 @@ function ReviewPage(props: {
     <>
       <section className="page-heading">
         <div>
-          <div className="eyebrow"><span className="eyebrow-line" />WORKSPACE / הצעות נכסים</div>
           <h1>בדיקת הצעה</h1>
           <p>בדקו התאמה בין בקשת הלקוח, הצעת המתווך ונתוני המאגר.</p>
         </div>
@@ -159,7 +158,7 @@ function ReviewPage(props: {
       <div className="review-layout">
         <section className="panel form-panel">
           <div className="panel-heading">
-            <div className="step-mark">01</div>
+            <div className="panel-heading-icon"><Icon name="text" /></div>
             <div><h2>פרטי הבדיקה</h2><p>הזינו את הטקסטים כפי שנמסרו, ללא שינוי.</p></div>
             <span className="required-note"><i /> שדות חובה</span>
           </div>
@@ -203,7 +202,7 @@ function StageProgress({ stage }: { stage: AnalysisStage }) {
 function ReportView({ report, onOpenProperty }: { report: AnalysisReport; onOpenProperty: (id: string) => void }) {
   const labelClass = report.recommendation.label === "מוכן לאישור" ? "recommendation-ready" : report.recommendation.label === "לא לאשר" ? "recommendation-stop" : "recommendation-review";
   return <section className="report-section">
-    <div className="report-title"><div><div className="eyebrow"><span className="eyebrow-line" />RESULTS / תוצאות</div><h2>דוח בדיקת הצעה</h2></div><span className="report-property">נכס <button onClick={() => onOpenProperty(report.property.propertyId)}>{report.property.propertyId}<Icon name="external" /></button></span></div>
+     <div className="report-title"><div><h2>דוח בדיקת הצעה</h2><p>השוואת ההצעה מול המאגר ודרישות הלקוח</p></div><span className="report-property">נכס <button onClick={() => onOpenProperty(report.property.propertyId)}>{report.property.propertyId}<Icon name="external" /></button></span></div>
     <div className={`recommendation-card ${labelClass}`}><div className="recommendation-icon"><Icon name={report.recommendation.label === "מוכן לאישור" ? "check" : "alert"} /></div><div className="recommendation-main"><span className="recommendation-overline">המלצה למנהל</span><h3>{report.recommendation.label}</h3><p>{report.recommendation.summary}</p></div><div className="recommendation-note"><Icon name="info" /> ההמלצה אינה החלטה סופית</div></div>
     <div className="report-grid">
       <ComparisonTable title="הצעה מול המאגר" subtitle="בדיקת נתוני המתווך מול רשומת הנכס" rows={report.databaseComparisons} kind="database" />
@@ -296,7 +295,7 @@ function CatalogPage({ properties, query, setQuery, selectedPropertyId, setSelec
     || property.propertyId.toLocaleLowerCase().includes(query.toLocaleLowerCase())
     || property.city.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <>
-    <section className="page-heading catalog-heading"><div><div className="eyebrow"><span className="eyebrow-line" />DATA / מאגר פנימי</div><h1>מאגר נכסים</h1><p>נתוני הנכסים המשמשים להשוואת הצעות.</p></div><div className="heading-icon"><Icon name="building" /></div></section>
+     <section className="page-heading catalog-heading"><div><h1>מאגר נכסים</h1><p>נתוני הנכסים המשמשים להשוואת הצעות.</p></div><div className="heading-icon"><Icon name="building" /></div></section>
     <section className="panel catalog-panel">
       <div className="catalog-toolbar"><div><h2>כל הנכסים <span>{String(filtered.length).padStart(2, "0")}</span></h2></div><label className="search-box"><Icon name="search" /><input aria-label="חיפוש נכסים לפי מזהה או עיר" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="חיפוש לפי מזהה או עיר" /><kbd>⌘ K</kbd></label></div>
       <div className="property-list">
