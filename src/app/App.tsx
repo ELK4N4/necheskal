@@ -58,7 +58,7 @@ function App() {
   ));
 
   async function handleRun() {
-    if (!clientRequest.trim() || !proposalText.trim() || !apiKey.trim() || running || !parsedProperties.success) return;
+    if (running || !parsedProperties.success) return;
     setRunning(true);
     setError("");
     setStage("screening");
@@ -112,7 +112,6 @@ function App() {
           <button className={page === "review" ? "nav-link active" : "nav-link"} onClick={() => navigate("review")}><Icon name="scan" />בדיקת הצעה</button>
           <button className={page === "catalog" ? "nav-link active" : "nav-link"} onClick={() => navigate("catalog")}><Icon name="building" />מאגר נכסים <span className="nav-count">05</span></button>
         </nav>
-         <div className="header-status"><span className="status-dot" /> סביבת עבודה מאובטחת</div>
       </header>
 
       <main className="main-content">
@@ -144,7 +143,7 @@ function ReviewPage(props: {
   running: boolean; stage: AnalysisStage | null; report: AnalysisReport | null; error: string;
   inputChanged: boolean; onRun: () => void; onOpenProperty: (id: string) => void;
 }) {
-  const ready = Boolean(props.apiKey.trim() && props.clientRequest.trim() && props.proposalText.trim() && !props.running);
+  const ready = !props.running;
   return (
     <>
       <section className="page-heading">
@@ -160,7 +159,6 @@ function ReviewPage(props: {
           <div className="panel-heading">
             <div className="panel-heading-icon"><Icon name="text" /></div>
             <div><h2>פרטי הבדיקה</h2><p>הזינו את הטקסטים כפי שנמסרו, ללא שינוי.</p></div>
-            <span className="required-note"><i /> שדות חובה</span>
           </div>
           <div className="field-group">
             <label htmlFor="client-request"><span>בקשת הלקוח</span><span className="field-tag">CLIENT BRIEF</span></label>
