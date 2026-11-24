@@ -28,4 +28,8 @@ npm run build
 
 ## Deployment
 
-The app builds to static files with `npm run build`. Host it over HTTPS. Do not set an API key in build-time environment variables.
+The app builds to static files with `npm run build`. The GitHub Actions workflow in `.github/workflows/deploy-pages.yml` deploys `main` to GitHub Pages. In the repository settings, open **Pages** and select **GitHub Actions** as the build and deployment source. The site URL will appear in the workflow's deployment summary.
+
+The workflow uses Vite's relative asset paths so it works both on a project site (`https://<owner>.github.io/<repository>/`) and on a user or custom-domain site. The app's page selection is query-string based and does not require server-side routing.
+
+GitHub Pages hosts only the UI. Analysis calls OpenAI directly from the visitor's browser, so each visitor must provide their own API key. Do not put an API key in GitHub secrets or build-time environment variables.

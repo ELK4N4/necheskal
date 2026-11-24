@@ -92,19 +92,23 @@ function App() {
   function openProperty(propertyId: string) {
     setSelectedPropertyId(propertyId);
     setPage("catalog");
-    window.history.replaceState(null, "", `?page=properties&propertyId=${encodeURIComponent(propertyId)}`);
+    const url = new URL(window.location.href);
+    url.search = `?page=properties&propertyId=${encodeURIComponent(propertyId)}`;
+    window.history.replaceState(null, "", url);
   }
 
   function navigate(next: Page) {
     setPage(next);
     setSelectedPropertyId(null);
-    window.history.replaceState(null, "", next === "catalog" ? "?page=properties" : "/");
+    const url = new URL(window.location.href);
+    url.search = next === "catalog" ? "?page=properties" : "";
+    window.history.replaceState(null, "", url);
   }
 
   return (
     <div className="app-shell" dir="rtl">
       <header className="topbar">
-        <a className="brand" href="/" onClick={(event) => { event.preventDefault(); navigate("review"); }}>
+        <a className="brand" href={window.location.pathname} onClick={(event) => { event.preventDefault(); navigate("review"); }}>
           <span className="brand-mark"><Icon name="building" /></span>
           <span className="brand-copy"><strong>נכסקל</strong><small>בדיקת הצעות נדל״ן</small></span>
         </a>
@@ -285,7 +289,11 @@ function CatalogPage({ properties, query, setQuery, selectedPropertyId, setSelec
   selectedPropertyId: string | null; setSelectedPropertyId: (id: string | null) => void;
 }) {
   useEffect(() => {
-    const open = () => window.history.replaceState(null, "", "?page=properties");
+    const open = () => {
+      const url = new URL(window.location.href);
+      url.search = "?page=properties";
+      window.history.replaceState(null, "", url);
+    };
     window.addEventListener("open-catalog", open);
     return () => window.removeEventListener("open-catalog", open);
   }, []);
