@@ -1,4 +1,4 @@
-# Bayit Bodek — Apartment Proposal Review
+# Necheskal — Apartment Proposal Review
 
 A static Hebrew-language React and TypeScript app that analyzes a broker's apartment proposal against a client's requirements and a read-only JSON database.
 
