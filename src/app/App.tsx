@@ -102,7 +102,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" dir="rtl">
       <header className="topbar">
         <a className="brand" href="/" onClick={(event) => { event.preventDefault(); navigate("review"); }}>
           <span className="brand-mark"><Icon name="home" /></span>
@@ -112,6 +112,7 @@ function App() {
           <button className={page === "review" ? "nav-link active" : "nav-link"} onClick={() => navigate("review")}><Icon name="scan" />בדיקת הצעה</button>
           <button className={page === "catalog" ? "nav-link active" : "nav-link"} onClick={() => navigate("catalog")}><Icon name="building" />מאגר נכסים <span className="nav-count">05</span></button>
         </nav>
+        <div className="header-status"><span className="status-dot" /> סביבת עבודה מאובטחת</div>
       </header>
 
       <main className="main-content">
@@ -164,18 +165,18 @@ function ReviewPage(props: {
           </div>
           <div className="field-group">
             <label htmlFor="client-request"><span>בקשת הלקוח</span><span className="field-tag">CLIENT BRIEF</span></label>
-            <textarea id="client-request" value={props.clientRequest} onChange={(event) => props.setClientRequest(event.target.value)} placeholder="לדוגמה: מחפשים דירה עם לפחות 4 חדרים, חניה ומעלית..." rows={5} />
+            <textarea id="client-request" aria-label="בקשת הלקוח" value={props.clientRequest} onChange={(event) => props.setClientRequest(event.target.value)} placeholder="לדוגמה: מחפשים דירה עם לפחות 4 חדרים, חניה ומעלית..." rows={5} />
             <div className="field-foot"><span>הדרישות יחולצו מהטקסט וייבדקו מול ההצעה.</span><span>{props.clientRequest.length} תווים</span></div>
           </div>
           <div className="field-group">
             <label htmlFor="broker-proposal"><span>הצעת המתווך</span><span className="field-tag">BROKER PROPOSAL</span></label>
-            <textarea id="broker-proposal" value={props.proposalText} onChange={(event) => props.setProposalText(event.target.value)} placeholder="הדביקו את הצעת המתווך. יש לכלול מזהה נכס ופרטים שהוצגו ללקוח..." rows={6} />
+            <textarea id="broker-proposal" aria-label="הצעת המתווך" value={props.proposalText} onChange={(event) => props.setProposalText(event.target.value)} placeholder="הדביקו את הצעת המתווך. יש לכלול מזהה נכס ופרטים שהוצגו ללקוח..." rows={6} />
             <div className="field-foot"><span>מזהה הנכס צריך להופיע בתוך ההצעה.</span><span>{props.proposalText.length} תווים</span></div>
           </div>
           <form onSubmit={(event) => { event.preventDefault(); props.onRun(); }}>
             <div className="field-group api-field">
               <label htmlFor="api-key"><span>מפתח OpenAI API</span><span className="field-tag">SESSION ONLY</span></label>
-              <div className="api-input"><Icon name="key" /><input id="api-key" type="password" autoComplete="off" spellCheck={false} value={props.apiKey} onChange={(event) => props.setApiKey(event.target.value)} placeholder="sk-••••••••••••••••••••••••••••" /><span className="secure-pill"><Icon name="shield" /> מוצפן בהעברה</span></div>
+              <div className="api-input"><Icon name="key" /><input id="api-key" aria-label="מפתח OpenAI API" type="password" autoComplete="off" spellCheck={false} value={props.apiKey} onChange={(event) => props.setApiKey(event.target.value)} placeholder="sk-••••••••••••••••••••••••••••" /><span className="secure-pill"><Icon name="shield" /> מוצפן בהעברה</span></div>
               <div className="field-foot"><span>המפתח לא נשמר בשרת או באחסון הדפדפן.</span><span>OpenAI</span></div>
             </div>
             {props.error && <div className="alert alert-danger form-error"><Icon name="alert" /><span>{props.error}</span></div>}
@@ -297,7 +298,7 @@ function CatalogPage({ properties, query, setQuery, selectedPropertyId, setSelec
   return <>
     <section className="page-heading catalog-heading"><div><div className="eyebrow"><span className="eyebrow-line" />DATA / מאגר פנימי</div><h1>מאגר נכסים</h1><p>נתוני הנכסים המשמשים להשוואת הצעות.</p></div><div className="heading-icon"><Icon name="building" /></div></section>
     <section className="panel catalog-panel">
-      <div className="catalog-toolbar"><div><h2>כל הנכסים <span>{String(filtered.length).padStart(2, "0")}</span></h2></div><label className="search-box"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="חיפוש לפי מזהה או עיר" /><kbd>⌘ K</kbd></label></div>
+      <div className="catalog-toolbar"><div><h2>כל הנכסים <span>{String(filtered.length).padStart(2, "0")}</span></h2></div><label className="search-box"><Icon name="search" /><input aria-label="חיפוש נכסים לפי מזהה או עיר" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="חיפוש לפי מזהה או עיר" /><kbd>⌘ K</kbd></label></div>
       <div className="property-list">
         {filtered.map((property, index) => {
           const selected = selectedPropertyId === property.propertyId;
